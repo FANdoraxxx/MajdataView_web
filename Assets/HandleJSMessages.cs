@@ -11,6 +11,22 @@ public class HandleJSMessages : MonoBehaviour
     [DllImport("__Internal")]
     private static extern void UnityLoaded();
 
+    [DllImport("__Internal")]
+    private static extern void OnTimeUpdate(float time);
+
+    [DllImport("__Internal")]
+    private static extern void OnPlayStateChanged(int isPlaying);
+
+    private bool lastPlayState = false;
+    private float lastTimeUpdateSent = 0f;
+
+    private GameMainManager GetManager()
+    {
+        if (gameMainManager == null)
+            gameMainManager = GameObject.Find("GameMain").GetComponent<GameMainManager>();
+        return gameMainManager;
+    }
+
     private void Awake()
     {
         Application.targetFrameRate = 5;
@@ -29,6 +45,29 @@ public class HandleJSMessages : MonoBehaviour
             }
         }
 
+    }
+
+    private void Update()
+    {
+        if (Application.platform != RuntimePlatform.WebGLPlayer) return;
+        var mgr = GetManager();
+        if (mgr == null) return;
+
+        // Send current time to JS at ~10 Hz to avoid flooding the JS bridge
+        var now = Time.realtimeSinceStartup;
+        if (now - lastTimeUpdateSent >= 0.1f)
+        {
+            lastTimeUpdateSent = now;
+            OnTimeUpdate(mgr.timeProvider.AudioTime);
+        }
+
+        // Notify JS whenever the play/pause state changes
+        bool currentPlayState = mgr.timeProvider.isStart;
+        if (currentPlayState != lastPlayState)
+        {
+            lastPlayState = currentPlayState;
+            OnPlayStateChanged(currentPlayState ? 1 : 0);
+        }
     }
 
 #if UNITY_EDITOR
@@ -66,13 +105,47 @@ public class HandleJSMessages : MonoBehaviour
         var mv = parts[3];
         var level = parts[4];
         Debug.Log("level:"+level);
-        gameMainManager = GameObject.Find("GameMain").GetComponent<GameMainManager>();
+        var mgr = GetManager();
 
-        gameMainManager.WebLoad(maidata,
+        mgr.WebLoad(maidata,
             bg,
             track,
             mv,
             int.Parse(level[2].ToString()));
         
+    }
+
+    /// <summary>
+    /// Start or resume playback. Called from JS via SendMessage.
+    /// </summary>
+    public void JSPlay()
+    {
+        GetManager().JSPlay();
+    }
+
+    /// <summary>
+    /// Pause playback. Called from JS via SendMessage.
+    /// </summary>
+    public void JSPause()
+    {
+        GetManager().JSPause();
+    }
+
+    /// <summary>
+    /// Seek to a position in seconds (passed as a string, e.g. "12.5").
+    /// Called from JS via SendMessage.
+    /// </summary>
+    /// <param name="timeStr">Target time in seconds as a string</param>
+    public void JSSeek(string timeStr)
+    {
+        if (float.TryParse(timeStr, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out float time))
+        {
+            GetManager().Seek(time);
+        }
+        else
+        {
+            Debug.LogWarning("JSSeek: invalid time string '" + timeStr + "'");
+        }
     }
 }

@@ -125,7 +125,7 @@ public class GameMainManager : MonoBehaviour
             
         }
         status = 0;
-        //ÔØÈë¸÷ÖÖ×ÊÔ´£¬Íê³Éºó×¼±¸²Ëµ¥
+        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Éºï¿½×¼ï¿½ï¿½ï¿½Ëµï¿½
         void checkReady()
         {
             menuManager.SetLoadingText(status);
@@ -225,5 +225,30 @@ public class GameMainManager : MonoBehaviour
     public void OnSpeedDropDownClick(int value)
     {
         audioSpeed = 1f-value*0.25f;
+    }
+
+    // Start playback if not already playing; also sets target frame rate for smooth rendering
+    public void JSPlay()
+    {
+        Application.targetFrameRate = -1;
+        if (!timeProvider.isStart)
+            OnPlayPauseButtonClick();
+    }
+
+    // Pause playback if currently playing
+    public void JSPause()
+    {
+        if (timeProvider.isStart)
+            OnPlayPauseButtonClick();
+    }
+
+    // Seek to an absolute time in seconds; resumes playing if it was playing before
+    public void Seek(float time)
+    {
+        bool wasPlaying = timeProvider.isStart;
+        OnStopButtonClick();
+        startTime = time;
+        if (wasPlaying)
+            Play();
     }
 }
