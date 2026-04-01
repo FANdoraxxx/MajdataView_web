@@ -125,7 +125,7 @@ public class GameMainManager : MonoBehaviour
             
         }
         status = 0;
-        //ÔØÈë¸÷ÖÖ×ÊÔ´£¬Íê³Éºó×¼±¸²Ëµ¥
+        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Éºï¿½×¼ï¿½ï¿½ï¿½Ëµï¿½
         void checkReady()
         {
             menuManager.SetLoadingText(status);
@@ -220,6 +220,77 @@ public class GameMainManager : MonoBehaviour
             yield return new WaitForEndOfFrame();
         }
         bgManager.UpdateVideoRatio();
+    }
+
+    /// <summary>
+    /// Seek to a specific time position. If currently playing, stops and restarts from the new position.
+    /// If not playing, just sets the position so the next Play() starts from there.
+    /// </summary>
+    public void SeekTo(float time)
+    {
+        bool wasPlaying = inited && timeProvider.isStart;
+
+        // Stop current playback and destroy notes
+        OnStopButtonClick();
+
+        // Clamp time to valid range
+        if (timeProvider.bgm.clip != null)
+            time = Mathf.Clamp(time, 0f, timeProvider.bgm.clip.length);
+        else
+            time = Mathf.Max(0f, time);
+
+        // Set the new start position
+        startTime = time;
+        timeProvider.AudioTime = time;
+        timeProvider.playStartTime = time;
+
+        // If was playing, restart from new position
+        if (wasPlaying)
+        {
+            Play();
+        }
+    }
+
+    /// <summary>
+    /// Returns true if a chart is loaded and ready to play.
+    /// </summary>
+    public bool IsReady()
+    {
+        return status >= 4;
+    }
+
+    /// <summary>
+    /// Returns true if playback is currently active (not paused).
+    /// </summary>
+    public bool IsPlaying()
+    {
+        return inited && timeProvider.isStart;
+    }
+
+    /// <summary>
+    /// Returns true if playback was started but is currently paused.
+    /// </summary>
+    public bool IsPaused()
+    {
+        return inited && !timeProvider.isStart;
+    }
+
+    /// <summary>
+    /// Returns the total duration of the loaded audio in seconds, or 0 if no audio is loaded.
+    /// </summary>
+    public float GetDuration()
+    {
+        if (timeProvider.bgm.clip != null)
+            return timeProvider.bgm.clip.length;
+        return 0f;
+    }
+
+    /// <summary>
+    /// Returns the current playback time in seconds.
+    /// </summary>
+    public float GetCurrentTime()
+    {
+        return timeProvider.AudioTime;
     }
 
     public void OnSpeedDropDownClick(int value)

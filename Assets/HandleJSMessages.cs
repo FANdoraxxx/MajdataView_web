@@ -11,6 +11,9 @@ public class HandleJSMessages : MonoBehaviour
     [DllImport("__Internal")]
     private static extern void UnityLoaded();
 
+    [DllImport("__Internal")]
+    private static extern void NotifyPlaybackState(string state, float time, float duration);
+
     private void Awake()
     {
         Application.targetFrameRate = 5;
@@ -52,6 +55,13 @@ public class HandleJSMessages : MonoBehaviour
     }
 #endif
 
+    private GameMainManager GetGameMainManager()
+    {
+        if (gameMainManager == null)
+            gameMainManager = GameObject.Find("GameMain").GetComponent<GameMainManager>();
+        return gameMainManager;
+    }
+
     /// <summary>
     /// Receive message from the nextjs app that has webgl-nextjs package
     /// </summary>
@@ -74,5 +84,128 @@ public class HandleJSMessages : MonoBehaviour
             mv,
             int.Parse(level[2].ToString()));
         
+    }
+
+    // ==================== Playback Control API ====================
+    // All methods below can be called from JavaScript via:
+    //   unityInstance.SendMessage("HandleJSMessages", "MethodName")
+    //   unityInstance.SendMessage("HandleJSMessages", "MethodName", value)
+
+    /// <summary>
+    /// Toggle play/pause. If not started, begins playback.
+    /// If playing, pauses. If paused, resumes.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "PlayPause")
+    /// </summary>
+    public void PlayPause()
+    {
+        var mgr = GetGameMainManager();
+        if (mgr != null)
+            mgr.OnPlayPauseButtonClick();
+        SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Start or resume playback. Does nothing if already playing.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "Play")
+    /// </summary>
+    public void Play()
+    {
+        var mgr = GetGameMainManager();
+        if (mgr == null) return;
+        if (!mgr.IsPlaying())
+            mgr.OnPlayPauseButtonClick();
+        SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Pause playback. Does nothing if not playing.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "Pause")
+    /// </summary>
+    public void Pause()
+    {
+        var mgr = GetGameMainManager();
+        if (mgr == null) return;
+        if (mgr.IsPlaying())
+            mgr.OnPlayPauseButtonClick();
+        SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Stop playback and reset to beginning.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "Stop")
+    /// </summary>
+    public void Stop()
+    {
+        var mgr = GetGameMainManager();
+        if (mgr != null)
+            mgr.OnStopButtonClick();
+        SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Seek to a specific time in seconds. If currently playing, restarts from new position.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "Seek", "12.5")
+    /// </summary>
+    /// <param name="timeStr">Time in seconds as a string (e.g. "12.5")</param>
+    public void Seek(string timeStr)
+    {
+        var mgr = GetGameMainManager();
+        if (mgr == null) return;
+        if (float.TryParse(timeStr, System.Globalization.NumberStyles.Float, 
+            System.Globalization.CultureInfo.InvariantCulture, out float time))
+        {
+            mgr.SeekTo(time);
+        }
+        else
+        {
+            Debug.LogError("HandleJSMessages.Seek: invalid time string: " + timeStr);
+        }
+        SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Request the current playback state. Triggers window.onPlaybackState(state, time, duration) callback.
+    /// state: "playing", "paused", "stopped", or "loading"
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "GetPlaybackState")
+    /// </summary>
+    public void GetPlaybackState()
+    {
+        SendPlaybackState();
+    }
+
+    private void SendPlaybackState()
+    {
+        try
+        {
+            var mgr = GetGameMainManager();
+            string state;
+            float time = 0f;
+            float duration = 0f;
+
+            if (mgr == null)
+            {
+                state = "stopped";
+            }
+            else
+            {
+                time = mgr.GetCurrentTime();
+                duration = mgr.GetDuration();
+
+                if (!mgr.IsReady())
+                    state = "loading";
+                else if (mgr.IsPlaying())
+                    state = "playing";
+                else if (mgr.IsPaused())
+                    state = "paused";
+                else
+                    state = "stopped";
+            }
+
+            NotifyPlaybackState(state, time, duration);
+        }
+        catch (Exception e)
+        {
+            Debug.Log("NotifyPlaybackState() failed: " + e.Message);
+        }
     }
 }
