@@ -23,6 +23,6 @@ mergeInto(LibraryManager.library,
 		if (typeof window.onPlaybackState === 'function')
 			window.onPlaybackState(UTF8ToString(state), currentTime, duration);
 		else
-			console.log("window.onPlaybackState is undefined");
+			console.warn("window.onPlaybackState callback not registered");
 	}
 });
