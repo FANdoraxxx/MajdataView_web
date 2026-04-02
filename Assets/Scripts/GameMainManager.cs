@@ -125,7 +125,7 @@ public class GameMainManager : MonoBehaviour
             
         }
         status = 0;
-        //ÔØÈë¸÷ÖÖ×ÊÔ´£¬Íê³Éºó×¼±¸²Ëµ¥
+        //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ô´ï¿½ï¿½ï¿½ï¿½Éºï¿½×¼ï¿½ï¿½ï¿½Ëµï¿½
         void checkReady()
         {
             menuManager.SetLoadingText(status);
@@ -225,5 +225,12 @@ public class GameMainManager : MonoBehaviour
     public void OnSpeedDropDownClick(int value)
     {
         audioSpeed = 1f-value*0.25f;
+    }
+
+    public string GetPlaybackState()
+    {
+        if (timeProvider.isStart) return "playing";
+        if (inited) return "paused";
+        return "stopped";
     }
 }
