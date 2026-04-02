@@ -228,7 +228,7 @@ public class HandleJSMessages : MonoBehaviour
 
         if (!float.TryParse(seconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var seekTime))
         {
-            Debug.LogWarning("JSSeek ignored invalid seek time: " + seconds);
+            Debug.LogWarning($"JSSeek ignored invalid seek time: {seconds}");
             ReportPlaybackStateToJs();
             return;
         }
