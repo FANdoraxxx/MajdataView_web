@@ -23,5 +23,25 @@ mergeInto(LibraryManager.library,
 		var state = UTF8ToString(statePtr);
 		if(window.onPlaybackState !== undefined)
 			window.onPlaybackState(state, time, duration);
+	},
+	NotifyChartInfo: function(jsonPtr) {
+		var json = UTF8ToString(jsonPtr);
+		if(window.onChartInfo !== undefined)
+			window.onChartInfo(JSON.parse(json));
+	},
+	NotifyNoteCount: function(jsonPtr) {
+		var json = UTF8ToString(jsonPtr);
+		if(window.onNoteCount !== undefined)
+			window.onNoteCount(JSON.parse(json));
+	},
+	NotifyComboStatus: function(jsonPtr) {
+		var json = UTF8ToString(jsonPtr);
+		if(window.onComboStatus !== undefined)
+			window.onComboStatus(JSON.parse(json));
+	},
+	NotifySettings: function(jsonPtr) {
+		var json = UTF8ToString(jsonPtr);
+		if(window.onSettings !== undefined)
+			window.onSettings(JSON.parse(json));
 	}
 });
