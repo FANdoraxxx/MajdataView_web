@@ -144,7 +144,7 @@ public class HandleJSMessages : MonoBehaviour
         }
         catch (Exception e)
         {
-            Debug.Log("ReportPlaybackState() failed: " + e.Message);
+            Debug.LogException(e);
         }
     }
 
@@ -214,6 +214,7 @@ public class HandleJSMessages : MonoBehaviour
 
         if (!float.TryParse(seconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var seekTime))
         {
+            Debug.Log("JSSeek ignored invalid seek time: " + seconds);
             ReportPlaybackStateToJs();
             return;
         }
@@ -230,7 +231,7 @@ public class HandleJSMessages : MonoBehaviour
         {
             duration = timeProvider.bgm.clip.length;
         }
-        seekTime = Mathf.Clamp(seekTime, 0f, duration > 0f ? duration : float.MaxValue);
+        seekTime = duration > 0f ? Mathf.Clamp(seekTime, 0f, duration) : Mathf.Max(0f, seekTime);
         var wasPlaying = timeProvider.isStart;
         if (wasPlaying)
         {

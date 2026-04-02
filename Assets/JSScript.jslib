@@ -20,7 +20,7 @@ mergeInto(LibraryManager.library,
     	return buffer;
 	},
 	ReportPlaybackState: function(state, currentTime, duration) {
-		if (window.onPlaybackState !== undefined)
+		if (typeof window.onPlaybackState === 'function')
 			window.onPlaybackState(UTF8ToString(state), currentTime, duration);
 		else
 			console.log("window.onPlaybackState is undefined");
