@@ -23,14 +23,32 @@ public class MenuManager : MonoBehaviour
     {
         SetInitMode();
         OverlayMenu.SetActive(false);
+
+        // Hide built-in playback controls — these are managed by the host web page via JS API
+        HidePlaybackUI();
+    }
+
+    /// <summary>
+    /// Deactivate all built-in overlay UI elements so the Unity canvas shows
+    /// only the game rendering.  Playback is controlled entirely by the host
+    /// web page through HandleJSMessages / JS API.
+    /// </summary>
+    private void HidePlaybackUI()
+    {
+        PlayPause.gameObject.SetActive(false);
+        Stop.gameObject.SetActive(false);
+        speedSelector.gameObject.SetActive(false);
+
+        string[] hideByName = { "TimeText", "MenuButton", "RightPanel", "Fps" };
+        foreach (var name in hideByName)
+        {
+            var go = GameObject.Find(name);
+            if (go != null) go.SetActive(false);
+        }
     }
 
     public void SetInitMode()
     {
-        PlayPause.interactable = false;
-        Stop.interactable = false;
-        speedSelector.interactable = false;
-        PlayPause.gameObject.GetComponentsInChildren<Image>()[1].sprite = ic_play;
         loadingText.gameObject.SetActive(false);
     }
 
@@ -45,32 +63,22 @@ public class MenuManager : MonoBehaviour
 
     public void SetPlayMode()
     {
-        Stop.interactable = true;
-        speedSelector.interactable = false;
-        PlayPause.gameObject.GetComponentsInChildren<Image>()[1].sprite = ic_pause;
+        // No-op: playback UI is hidden; state is reported to JS via NotifyPlaybackState
     }
 
     public void SetPauseMode()
     {
-        Stop.interactable = true;
-        speedSelector.interactable= false;
-        PlayPause.gameObject.GetComponentsInChildren<Image>()[1].sprite = ic_play;
+        // No-op: playback UI is hidden; state is reported to JS via NotifyPlaybackState
     }
 
     public void SetReadyMode()
     {
         loadingText.gameObject.SetActive(false);
-        PlayPause.interactable = true;
-        Stop.interactable = false;
-        speedSelector.interactable = true;
-        PlayPause.gameObject.GetComponentsInChildren<Image>()[1].sprite = ic_play;
     }
 
     public void DisablePlay()
     {
-        PlayPause.interactable = false;
-        Stop.interactable = false;
-        speedSelector.interactable = true;
+        // No-op: playback UI is hidden
     }
 
 
