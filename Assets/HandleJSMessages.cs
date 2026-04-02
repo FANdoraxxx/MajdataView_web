@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -10,6 +11,9 @@ public class HandleJSMessages : MonoBehaviour
 
     [DllImport("__Internal")]
     private static extern void UnityLoaded();
+
+    [DllImport("__Internal")]
+    private static extern void ReportPlaybackState(string state, float currentTime, float duration);
 
     private void Awake()
     {
@@ -73,6 +77,210 @@ public class HandleJSMessages : MonoBehaviour
             track,
             mv,
             int.Parse(level[2].ToString()));
-        
+
+        ReportPlaybackStateToJs();
+    }
+
+    private bool EnsureGameMainManager()
+    {
+        if (gameMainManager != null)
+        {
+            return true;
+        }
+
+        var gameMain = GameObject.Find("GameMain");
+        if (gameMain == null)
+        {
+            return false;
+        }
+
+        gameMainManager = gameMain.GetComponent<GameMainManager>();
+        return gameMainManager != null;
+    }
+
+    private void ReportPlaybackStateToJs()
+    {
+        if (Application.platform != RuntimePlatform.WebGLPlayer)
+        {
+            return;
+        }
+
+        var state = "uninitialized";
+        float currentTime = 0f;
+        float duration = 0f;
+
+        if (EnsureGameMainManager() && gameMainManager.timeProvider != null)
+        {
+            var timeProvider = gameMainManager.timeProvider;
+            currentTime = Mathf.Max(0f, timeProvider.AudioTime);
+            if (timeProvider.bgm != null && timeProvider.bgm.clip != null)
+            {
+                duration = timeProvider.bgm.clip.length;
+            }
+
+            if (timeProvider.isStart)
+            {
+                state = "playing";
+            }
+            else if (gameMainManager.menuManager != null &&
+                     gameMainManager.menuManager.loadingText != null &&
+                     gameMainManager.menuManager.loadingText.gameObject.activeSelf)
+            {
+                state = "loading";
+            }
+            else if (currentTime > 0f)
+            {
+                state = "paused";
+            }
+            else
+            {
+                state = "stopped";
+            }
+        }
+
+        try
+        {
+            ReportPlaybackState(state, currentTime, duration);
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+    }
+
+    public void JSPlay()
+    {
+        if (!EnsureGameMainManager())
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        var timeProvider = gameMainManager.timeProvider;
+        if (timeProvider == null)
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        if (!timeProvider.isStart)
+        {
+            gameMainManager.OnPlayPauseButtonClick();
+        }
+
+        ReportPlaybackStateToJs();
+    }
+
+    public void JSPause()
+    {
+        if (!EnsureGameMainManager())
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        var timeProvider = gameMainManager.timeProvider;
+        if (timeProvider == null)
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        if (timeProvider.isStart)
+        {
+            gameMainManager.OnPlayPauseButtonClick();
+        }
+
+        ReportPlaybackStateToJs();
+    }
+
+    public void JSPlayPause()
+    {
+        if (!EnsureGameMainManager())
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        gameMainManager.OnPlayPauseButtonClick();
+        ReportPlaybackStateToJs();
+    }
+
+    public void JSStop()
+    {
+        if (!EnsureGameMainManager())
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        gameMainManager.OnStopButtonClick();
+        ReportPlaybackStateToJs();
+    }
+
+    public void JSSeek(string seconds)
+    {
+        if (!EnsureGameMainManager())
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        if (!float.TryParse(seconds, NumberStyles.Float, CultureInfo.InvariantCulture, out var seekTime))
+        {
+            Debug.LogWarning($"JSSeek ignored invalid seek time: {seconds}");
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        var timeProvider = gameMainManager.timeProvider;
+        if (timeProvider == null)
+        {
+            ReportPlaybackStateToJs();
+            return;
+        }
+
+        var duration = 0f;
+        if (timeProvider.bgm != null && timeProvider.bgm.clip != null)
+        {
+            duration = timeProvider.bgm.clip.length;
+        }
+        seekTime = duration > 0f ? Mathf.Clamp(seekTime, 0f, duration) : Mathf.Max(0f, seekTime);
+        var wasPlaying = timeProvider.isStart;
+        if (wasPlaying)
+        {
+            timeProvider.Pause();
+        }
+
+        timeProvider.AudioTime = seekTime;
+        timeProvider.playStartTime = seekTime;
+        gameMainManager.startTime = seekTime;
+
+        if (gameMainManager.bgManager != null && gameMainManager.bgManager.videoPlayer != null)
+        {
+            var videoTime = Mathf.Max(0f, seekTime - gameMainManager.offset);
+            gameMainManager.bgManager.videoPlayer.time = videoTime;
+            if (wasPlaying && gameMainManager.bgManager.videoPlayer.isPrepared)
+            {
+                gameMainManager.bgManager.videoPlayer.playbackSpeed = gameMainManager.audioSpeed;
+                gameMainManager.bgManager.videoPlayer.Play();
+            }
+            else
+            {
+                gameMainManager.bgManager.videoPlayer.Pause();
+            }
+        }
+
+        if (wasPlaying)
+        {
+            timeProvider.Resume();
+        }
+
+        ReportPlaybackStateToJs();
+    }
+
+    public void JSGetPlaybackState()
+    {
+        ReportPlaybackStateToJs();
     }
 }

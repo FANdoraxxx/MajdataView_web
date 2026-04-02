@@ -18,5 +18,11 @@ mergeInto(LibraryManager.library,
     	var buffer = _malloc(bufferSize);
     	stringToUTF8(returnStr, buffer, bufferSize);
     	return buffer;
+	},
+	ReportPlaybackState: function(state, currentTime, duration) {
+		if (typeof window.onPlaybackState === 'function')
+			window.onPlaybackState(UTF8ToString(state), currentTime, duration);
+		else
+			console.warn("window.onPlaybackState callback not registered");
 	}
 });
