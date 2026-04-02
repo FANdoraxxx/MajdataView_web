@@ -236,7 +236,7 @@ public class HandleJSMessages : MonoBehaviour
     // ==================== Speed / Settings API ====================
 
     /// <summary>
-    /// Set audio playback speed (0.25 – 1.0).  Applies on next Play().
+    /// Set audio playback speed (0.25 – 2.0).  Applies on next Play().
     /// JS: unityInstance.SendMessage("HandleJSMessages", "SetSpeed", "0.75")
     /// </summary>
     public void SetSpeed(string speedStr)
