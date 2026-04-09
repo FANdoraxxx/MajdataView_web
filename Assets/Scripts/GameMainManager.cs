@@ -226,8 +226,17 @@ public class GameMainManager : MonoBehaviour
     {
         bool wasPlaying = inited && timeProvider.isStart;
 
-        // Stop current playback and destroy notes
-        OnStopButtonClick();
+        // Cleanup like OnStopButtonClick but pause the video instead of
+        // stopping it so that the VideoPlayer stays prepared and can seek.
+        bgCover.color = new Color(0f, 0f, 0f, 0f);
+        timeProvider.ResetStartTime();
+        foreach (Transform child in Notes.transform) {
+            GameObject.Destroy(child.gameObject);
+        }
+        inited = false;
+        objectCounter.Reset();
+        menuManager.SetReadyMode();
+        bgManager.videoPlayer.Pause();
 
         // Clamp time to valid range
         if (timeProvider.bgm.clip != null)
