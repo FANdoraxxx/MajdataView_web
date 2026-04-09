@@ -26,6 +26,9 @@ public class HandleJSMessages : MonoBehaviour
     [DllImport("__Internal")]
     private static extern void NotifySettings(string json);
 
+    [DllImport("__Internal")]
+    private static extern void NotifyChartReloaded(bool success);
+
     private void Awake()
     {
         Application.targetFrameRate = 5;
@@ -195,6 +198,60 @@ public class HandleJSMessages : MonoBehaviour
     public void GetPlaybackState()
     {
         SendPlaybackState();
+    }
+
+    /// <summary>
+    /// Re-download the maidata from the last chart URL and re-serialize the current level.
+    /// Stops playback if active. Triggers window.onChartReloaded(success) callback when done.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "ReloadChart")
+    /// </summary>
+    public void ReloadChart()
+    {
+        var mgr = GetGameMainManager();
+        if (mgr == null) return;
+        mgr.ReloadChart((success) =>
+        {
+            try { NotifyChartReloaded(success); }
+            catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
+        });
+    }
+
+    /// <summary>
+    /// Update chart data from raw maidata text. Stops playback if active.
+    /// Format: "level\nmaidataText" where level is 0-6 (or -1 to keep current level).
+    /// Triggers window.onChartReloaded(success) callback.
+    /// JS: unityInstance.SendMessage("HandleJSMessages", "UpdateChart", "3\n&title=...")
+    /// </summary>
+    public void UpdateChart(string levelAndText)
+    {
+        var mgr = GetGameMainManager();
+        if (mgr == null) return;
+
+        // Split on first newline: "level\nrest_of_maidata"
+        int newlineIdx = levelAndText.IndexOf('\n');
+        if (newlineIdx < 0)
+        {
+            Debug.LogError("HandleJSMessages.UpdateChart: expected format 'level\\nmaidataText'");
+            try { NotifyChartReloaded(false); }
+            catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
+            return;
+        }
+
+        string levelStr = levelAndText.Substring(0, newlineIdx);
+        string maidataText = levelAndText.Substring(newlineIdx + 1);
+
+        int level = -1;
+        if (!int.TryParse(levelStr, out level))
+        {
+            Debug.LogError("HandleJSMessages.UpdateChart: invalid level: " + levelStr);
+            try { NotifyChartReloaded(false); }
+            catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
+            return;
+        }
+
+        bool success = mgr.UpdateChartData(maidataText, level);
+        try { NotifyChartReloaded(success); }
+        catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
     }
 
     private void SendPlaybackState()

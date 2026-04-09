@@ -42,6 +42,10 @@ public class GameMainManager : MonoBehaviour
     private bool inited = false;
     private int status = 0;
 
+    // Stored for chart-only reload
+    private string lastChartPath;
+    private int currentLevel;
+
     // init loading & start playing method
     public void Play()
     {
@@ -115,6 +119,10 @@ public class GameMainManager : MonoBehaviour
         timeProvider.playStartTime = 0f;
         menuManager.SetInitMode();
         bgManager.isAnyErr = false;
+
+        // Remember for chart-only reload
+        lastChartPath = chartpath;
+        currentLevel = level;
         if(videopath != null)
         {
             bgManager.videoPlayer.url = videopath;
@@ -296,6 +304,135 @@ public class GameMainManager : MonoBehaviour
     public float GetCurrentTime()
     {
         return timeProvider.AudioTime;
+    }
+
+    /// <summary>
+    /// Re-download the maidata from the last chart URL and re-serialize the current level.
+    /// Stops playback if active. Calls onComplete(true) on success, onComplete(false) on failure.
+    /// </summary>
+    public void ReloadChart(Action<bool> onComplete = null)
+    {
+        if (string.IsNullOrEmpty(lastChartPath))
+        {
+            Debug.LogError("ReloadChart: no chart URL stored yet.");
+            onComplete?.Invoke(false);
+            return;
+        }
+
+        // Stop current playback
+        OnStopButtonClick();
+        timeProvider.AudioTime = 0f;
+        timeProvider.playStartTime = 0f;
+
+        StartCoroutine(ReloadChartCoroutine(onComplete));
+    }
+
+    private IEnumerator ReloadChartCoroutine(Action<bool> onComplete)
+    {
+        Debug.Log("ReloadChart: re-downloading from " + lastChartPath);
+        SimaiProcess.ClearData();
+        UnityWebRequest www = UnityWebRequest.Get(lastChartPath);
+        yield return www.SendWebRequest();
+
+        if (www.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError("ReloadChart: download error: " + www.error);
+            onComplete?.Invoke(false);
+            yield break;
+        }
+
+        if (!SimaiProcess.ReadDataRaw(www.downloadHandler.text.Split('\n')))
+        {
+            Debug.LogError("ReloadChart: error parsing maidata.");
+            onComplete?.Invoke(false);
+            yield break;
+        }
+
+        if (!TrySerializeLevel(currentLevel))
+        {
+            onComplete?.Invoke(false);
+            yield break;
+        }
+
+        menuManager.SetReadyMode();
+        onComplete?.Invoke(true);
+    }
+
+    /// <summary>
+    /// Update chart data from raw maidata text. Stops playback if active.
+    /// Parses the text and serializes the specified level (or current level if -1).
+    /// Returns true on success.
+    /// </summary>
+    public bool UpdateChartData(string rawMaidataText, int level = -1)
+    {
+        if (string.IsNullOrEmpty(rawMaidataText))
+        {
+            Debug.LogError("UpdateChartData: empty maidata text.");
+            return false;
+        }
+
+        // Stop current playback
+        OnStopButtonClick();
+        timeProvider.AudioTime = 0f;
+        timeProvider.playStartTime = 0f;
+
+        if (level >= 0)
+            currentLevel = level;
+
+        SimaiProcess.ClearData();
+        if (!SimaiProcess.ReadDataRaw(rawMaidataText.Split('\n')))
+        {
+            Debug.LogError("UpdateChartData: error parsing maidata.");
+            return false;
+        }
+
+        if (!TrySerializeLevel(currentLevel))
+            return false;
+
+        menuManager.SetReadyMode();
+        return true;
+    }
+
+    /// <summary>
+    /// Serialize the specified level from the currently loaded fumens.
+    /// Returns true on success, false if the level is empty or invalid.
+    /// </summary>
+    private bool TrySerializeLevel(int level)
+    {
+        if (level < 0 || level >= SimaiProcess.fumens.Length)
+        {
+            Debug.Log("TrySerializeLevel: invalid level index " + level);
+            menuManager.DisablePlay();
+            return false;
+        }
+        string fumens = SimaiProcess.fumens[level];
+        if (fumens == null)
+        {
+            Debug.Log("TrySerializeLevel: null level " + level);
+            menuManager.DisablePlay();
+            return false;
+        }
+        if (SimaiProcess.Serialize(fumens) == -1)
+        {
+            menuManager.DisablePlay();
+            return false;
+        }
+        Debug.Log("Total notes: " + SimaiProcess.notelist.Count);
+        if (SimaiProcess.notelist.Count <= 0)
+        {
+            Debug.Log("TrySerializeLevel: empty level " + level);
+            menuManager.DisablePlay();
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Returns the current difficulty level index (0-6).
+    /// </summary>
+    public int GetCurrentLevel()
+    {
+        return currentLevel;
     }
 
     public void OnSpeedDropDownClick(int value)

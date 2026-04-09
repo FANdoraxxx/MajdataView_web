@@ -43,5 +43,9 @@ mergeInto(LibraryManager.library,
 		var json = UTF8ToString(jsonPtr);
 		if(window.onSettings !== undefined)
 			window.onSettings(JSON.parse(json));
+	},
+	NotifyChartReloaded: function(success) {
+		if(window.onChartReloaded !== undefined)
+			window.onChartReloaded(!!success);
 	}
 });
