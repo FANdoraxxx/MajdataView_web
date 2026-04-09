@@ -341,7 +341,7 @@ public class GameMainManager : MonoBehaviour
             yield break;
         }
 
-        if (!SimaiProcess.ReadDataRaw(www.downloadHandler.text.Split('\n')))
+        if (!SimaiProcess.ReadDataRaw(www.downloadHandler.text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n')))
         {
             Debug.LogError("ReloadChart: error parsing maidata.");
             onComplete?.Invoke(false);
@@ -373,14 +373,16 @@ public class GameMainManager : MonoBehaviour
 
         // Stop current playback
         OnStopButtonClick();
+        startTime = 0f;
         timeProvider.AudioTime = 0f;
         timeProvider.playStartTime = 0f;
 
         if (level >= 0)
             currentLevel = level;
 
+        // Normalize line endings so \r\n (Windows) doesn't corrupt note strings
         SimaiProcess.ClearData();
-        if (!SimaiProcess.ReadDataRaw(rawMaidataText.Split('\n')))
+        if (!SimaiProcess.ReadDataRaw(rawMaidataText.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n')))
         {
             Debug.LogError("UpdateChartData: error parsing maidata.");
             return false;

@@ -241,12 +241,22 @@ public class HandleJSMessages : MonoBehaviour
         string maidataText = levelAndText.Substring(newlineIdx + 1);
 
         int level = -1;
+        // Accept both plain integer ("3") and "lvX" format ("lv3") used by ReceiveMessage
+        levelStr = levelStr.Trim();
         if (!int.TryParse(levelStr, out level))
         {
-            Debug.LogError("HandleJSMessages.UpdateChart: invalid level: " + levelStr);
-            try { NotifyChartReloaded(false); }
-            catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
-            return;
+            if (levelStr.StartsWith("lv") && levelStr.Length > 2 &&
+                int.TryParse(levelStr.Substring(2), out level))
+            {
+                // parsed "lv3" → 3
+            }
+            else
+            {
+                Debug.LogError("HandleJSMessages.UpdateChart: invalid level: " + levelStr);
+                try { NotifyChartReloaded(false); }
+                catch (Exception e) { Debug.LogError("NotifyChartReloaded() failed: " + e.Message); }
+                return;
+            }
         }
 
         bool success = mgr.UpdateChartData(maidataText, level);
