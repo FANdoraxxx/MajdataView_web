@@ -57,8 +57,9 @@ public class GameMainManager : MonoBehaviour
         // set btn states
         menuManager.SetPlayMode();
         var vtime = startTime - offset;
-        if (vtime == 0)
+        if (vtime >= 0)
         {
+            bgManager.videoPlayer.time = vtime;
             bgManager.videoPlayer.playbackSpeed = audioSpeed;
             bgManager.videoPlayer.Play();
         }
@@ -80,13 +81,8 @@ public class GameMainManager : MonoBehaviour
             menuManager.SetPauseMode();
         } else {
             timeProvider.Resume();
-            var vtime = startTime - offset;
-            if (vtime == 0)
-            {
-                bgManager.videoPlayer.playbackSpeed = audioSpeed;
-                bgManager.videoPlayer.Play();
-            }
-            //bgManager.videoPlayer.Play();
+            bgManager.videoPlayer.playbackSpeed = audioSpeed;
+            bgManager.videoPlayer.Play();
             menuManager.SetPlayMode();
         }
     }
